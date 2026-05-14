@@ -477,6 +477,6 @@ export const keyStoreFactory = (
     streamAdd,
     streamRange,
     streamTrim,
-    streamCollect,
+    streamCollect
   };
 };
