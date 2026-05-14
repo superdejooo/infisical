@@ -85,6 +85,12 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = String(next);
       return next;
     },
+    incrementByWithExpiry: async (key, value) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current + value;
+      store[key] = String(next);
+      return next;
+    },
     acquireLock: () => {
       return Promise.resolve({
         release: () => {}
