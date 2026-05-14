@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -32,6 +32,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  ProjectIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -55,7 +56,8 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
+import { getProjectBaseURL } from "@app/helpers/project";
+import { formatProjectRoleName, isCustomOrgRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -65,11 +67,13 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   identityAuthToNameMap,
   useGetOrgRoles,
+  useGetUserProjects,
   useSearchOrgIdentityMemberships,
   useUpdateOrgIdentity
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
+import { Project } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -143,6 +147,15 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   });
 
   const { data: roles } = useGetOrgRoles(organizationId);
+
+  const { data: userProjects } = useGetUserProjects();
+  const userProjectsById = useMemo(() => {
+    const map = new Map<string, Project>();
+    userProjects?.forEach((project) => {
+      map.set(project.id, project);
+    });
+    return map;
+  }, [userProjects]);
 
   const handleSort = (column: OrgIdentityOrderBy) => {
     if (column === orderBy) {
@@ -258,7 +271,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TableHeader>
               <TableRow>
                 <TableHead
-                  className="w-1/2 cursor-pointer"
+                  className="w-1/3 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                 >
                   Name
@@ -273,10 +286,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   />
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
+                  className="w-1/3 cursor-pointer"
                   onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                 >
-                  {isSubOrganization ? "Sub-" : ""}Organization Role
+                  Role
                   <ChevronDownIcon
                     className={twMerge(
                       "transition-transform",
@@ -287,7 +300,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     )}
                   />
                 </TableHead>
-                {isSubOrganization && <TableHead>Managed By</TableHead>}
+                <TableHead>Managed By</TableHead>
                 <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
@@ -301,11 +314,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     <TableCell>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
-                    {isSubOrganization && (
-                      <TableCell>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    )}
+                    <TableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-4" />
                     </TableCell>
@@ -314,27 +325,62 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               {!isPending &&
                 data?.identities?.map(
                   ({
-                    identity: { id, name, orgId },
+                    identity: { id, name, orgId, projectId },
                     role,
                     customRole,
                     lastLoginAuthMethod,
-                    lastLoginTime
+                    lastLoginTime,
+                    canEdit: canEditIdentity
                   }) => {
-                    const isSubOrgIdentity = currentOrg.id === orgId;
+                    const isProjectScoped = Boolean(projectId);
+                    const project =
+                      isProjectScoped && projectId ? userProjectsById.get(projectId) : undefined;
+                    const isSubOrgIdentity =
+                      !isProjectScoped && isSubOrganization && currentOrg.id === orgId;
+                    const isEditable = canEditIdentity ?? false;
+
+                    const navigateToProject = () => {
+                      if (!project) return;
+                      navigate({
+                        to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: project.id,
+                          identityId: id
+                        }
+                      });
+                    };
+
+                    const handleRowClick = () => {
+                      if (!isEditable) return;
+                      if (isProjectScoped) {
+                        if (!project) {
+                          createNotification({
+                            text: "Unable to access project",
+                            type: "error"
+                          });
+                          return;
+                        }
+                        navigateToProject();
+                        return;
+                      }
+                      navigate({
+                        to: "/organizations/$orgId/identities/$identityId",
+                        params: {
+                          identityId: id,
+                          orgId: currentOrg.id
+                        }
+                      });
+                    };
 
                     return (
                       <TableRow
                         key={`identity-${id}`}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          navigate({
-                            to: "/organizations/$orgId/identities/$identityId",
-                            params: {
-                              identityId: id,
-                              orgId: currentOrg.id
-                            }
-                          })
-                        }
+                        className={twMerge(
+                          "cursor-pointer",
+                          !isEditable && "cursor-not-allowed opacity-60"
+                        )}
+                        onClick={handleRowClick}
                       >
                         <TableCell isTruncatable className="group">
                           {name}
@@ -353,41 +399,68 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <OrgPermissionCan
-                            I={OrgPermissionIdentityActions.Edit}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <Select
-                                value={role === "custom" ? (customRole?.slug as string) : role}
-                                disabled={!isAllowed}
-                                onValueChange={(selectedRole) =>
-                                  handleChangeRole({
-                                    identityId: id,
-                                    role: selectedRole
-                                  })
-                                }
+                          {isProjectScoped ? (
+                            <Select
+                              value={role === "custom" ? (customRole?.slug as string) : role}
+                              disabled
+                            >
+                              <SelectTrigger
+                                className="w-full max-w-32 lg:max-w-64 [&>svg]:hidden"
+                                size="sm"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <SelectTrigger
-                                  className="w-full max-w-32 lg:max-w-64"
-                                  size="sm"
-                                  onClick={(e) => e.stopPropagation()}
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-w-32 lg:max-w-64">
+                                <SelectItem
+                                  value={role === "custom" ? (customRole?.slug as string) : role}
                                 >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="max-w-32 lg:max-w-64">
-                                  {(roles || []).map(({ slug, name: roleName }) => (
-                                    <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                      {roleName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </OrgPermissionCan>
+                                  {formatProjectRoleName(role, customRole?.name)}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <OrgPermissionCan
+                              I={OrgPermissionIdentityActions.Edit}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <Select
+                                  value={role === "custom" ? (customRole?.slug as string) : role}
+                                  disabled={!isAllowed}
+                                  onValueChange={(selectedRole) =>
+                                    handleChangeRole({
+                                      identityId: id,
+                                      role: selectedRole
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger
+                                    className="w-full max-w-32 lg:max-w-64"
+                                    size="sm"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-w-32 lg:max-w-64">
+                                    {(roles || []).map(({ slug, name: roleName }) => (
+                                      <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                        {roleName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </OrgPermissionCan>
+                          )}
                         </TableCell>
-                        {isSubOrganization && (
-                          <TableCell>
+                        <TableCell>
+                          {isProjectScoped ? (
+                            <Badge variant="project">
+                              <ProjectIcon />
+                              Project
+                            </Badge>
+                          ) : (
                             <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
                               {isSubOrgIdentity ? (
                                 <>
@@ -397,12 +470,12 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                               ) : (
                                 <>
                                   <OrgIcon />
-                                  Root Organization
+                                  Organization
                                 </>
                               )}
                             </Badge>
-                          </TableCell>
-                        )}
+                          )}
+                        </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -415,52 +488,67 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <OrgPermissionCan
-                                I={OrgPermissionIdentityActions.Edit}
-                                a={OrgPermissionSubjects.Identity}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate({
-                                        to: "/organizations/$orgId/identities/$identityId",
-                                        params: {
-                                          identityId: id,
-                                          orgId
-                                        }
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
+                              {isProjectScoped ? (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigateToProject();
+                                  }}
+                                  isDisabled={!isEditable}
+                                >
+                                  <EditIcon />
+                                  Edit Machine Identity
+                                </DropdownMenuItem>
+                              ) : (
+                                <>
+                                  <OrgPermissionCan
+                                    I={OrgPermissionIdentityActions.Edit}
+                                    a={OrgPermissionSubjects.Identity}
                                   >
-                                    <EditIcon />
-                                    Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionIdentityActions.Delete}
-                                a={OrgPermissionSubjects.Identity}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    variant="danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteIdentity", {
-                                        identityId: id,
-                                        name
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate({
+                                            to: "/organizations/$orgId/identities/$identityId",
+                                            params: {
+                                              identityId: id,
+                                              orgId
+                                            }
+                                          });
+                                        }}
+                                        isDisabled={!isAllowed}
+                                      >
+                                        <EditIcon />
+                                        Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
+                                      </DropdownMenuItem>
+                                    )}
+                                  </OrgPermissionCan>
+                                  <OrgPermissionCan
+                                    I={OrgPermissionIdentityActions.Delete}
+                                    a={OrgPermissionSubjects.Identity}
                                   >
-                                    <TrashIcon />
-                                    {isSubOrgIdentity
-                                      ? "Delete Machine Identity"
-                                      : "Remove From Sub-Organization"}
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        variant="danger"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePopUpOpen("deleteIdentity", {
+                                            identityId: id,
+                                            name
+                                          });
+                                        }}
+                                        isDisabled={!isAllowed}
+                                      >
+                                        <TrashIcon />
+                                        {isSubOrgIdentity
+                                          ? "Delete Machine Identity"
+                                          : "Remove From Sub-Organization"}
+                                      </DropdownMenuItem>
+                                    )}
+                                  </OrgPermissionCan>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

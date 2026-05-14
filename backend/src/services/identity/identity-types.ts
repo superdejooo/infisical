@@ -56,10 +56,12 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
   orgId: string;
+  accessibleProjectIds: string[];
   searchFilter?: Partial<{
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
   }>;
 };
 
-export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
+export type TSearchOrgIdentitiesByOrgIdDTO = Omit<TSearchOrgIdentitiesByOrgIdDAL, "accessibleProjectIds"> &
+  TOrgPermission;

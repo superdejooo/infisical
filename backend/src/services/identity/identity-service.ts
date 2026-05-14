@@ -1,6 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  TableName,
+  TRoles
+} from "@app/db/schemas";
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -9,6 +16,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -42,7 +50,10 @@ type TIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getOrgPermissionByRoles" | "getProjectPermission"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
@@ -470,16 +481,54 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
+    const canEditOrgIdentity = permission.can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+    const actorProjectIds = await identityOrgMembershipDAL.findActorProjectIdsInOrg({
+      orgId,
+      actor,
+      actorId
+    });
+    const accessibleProjectIds: string[] = [];
+    const editableProjectIds = new Set<string>();
+    await Promise.all(
+      actorProjectIds.map(async (projectId) => {
+        try {
+          const { permission: projectPermission } = await permissionService.getProjectPermission({
+            actor,
+            actorId,
+            projectId,
+            actorAuthMethod,
+            actorOrgId,
+            actionProjectType: ActionProjectType.Any
+          });
+          if (projectPermission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)) {
+            accessibleProjectIds.push(projectId);
+            if (projectPermission.can(ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity)) {
+              editableProjectIds.add(projectId);
+            }
+          }
+        } catch {
+          // skip projects where permission resolution fails
+        }
+      })
+    );
+
     const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentities({
       orgId,
       limit,
       offset,
       orderBy,
       orderDirection,
-      searchFilter
+      searchFilter,
+      accessibleProjectIds
     });
 
-    return { identityMemberships: docs, totalCount };
+    const identityMemberships = docs.map((doc) => ({
+      ...doc,
+      canEdit: doc.identity?.projectId ? editableProjectIds.has(doc.identity.projectId) : canEditOrgIdentity
+    }));
+
+    return { identityMemberships, totalCount };
   };
 
   const listProjectIdentitiesByIdentityId = async ({

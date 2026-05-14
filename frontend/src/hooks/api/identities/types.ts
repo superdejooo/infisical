@@ -54,6 +54,7 @@ export type IdentityMembershipOrg = {
   customRole?: TOrgRole;
   createdAt: string;
   updatedAt: string;
+  canEdit?: boolean;
 };
 
 export type IdentityProjectMembershipV1 = {

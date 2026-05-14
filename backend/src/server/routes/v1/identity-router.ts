@@ -434,9 +434,16 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
+            identity: IdentitiesSchema.pick({
+              name: true,
+              id: true,
+              hasDeleteProtection: true,
+              orgId: true,
+              projectId: true
+            }).extend({
               authMethods: z.array(z.string())
-            })
+            }),
+            canEdit: z.boolean()
           }).array(),
           totalCount: z.number()
         })

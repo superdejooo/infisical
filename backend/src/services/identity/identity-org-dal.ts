@@ -25,6 +25,7 @@ import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import {
   OrgIdentityOrderBy,
   TListOrgIdentitiesByOrgIdDTO,
@@ -32,6 +33,12 @@ import {
 } from "@app/services/identity/identity-types";
 
 import { buildAuthMethods } from "./identity-fns";
+
+type TFindActorProjectIdsInOrgArgs = {
+  orgId: string;
+  actor: ActorType;
+  actorId: string;
+};
 
 export type TIdentityOrgDALFactory = ReturnType<typeof identityOrgDALFactory>;
 
@@ -402,6 +409,34 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findActorProjectIdsInOrg = async (
+    { orgId, actor, actorId }: TFindActorProjectIdsInOrgArgs,
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.scopeProjectId`)
+        .select(`${TableName.Membership}.scopeProjectId as projectId`);
+
+      if (actor === ActorType.IDENTITY) {
+        void query.where(`${TableName.Membership}.actorIdentityId`, actorId);
+      } else {
+        void query.where(`${TableName.Membership}.actorUserId`, actorId);
+      }
+
+      const rows = await query;
+      const projectIds = new Set<string>();
+      rows.forEach((row: { projectId: string | null }) => {
+        if (row.projectId) projectIds.add(row.projectId);
+      });
+      return Array.from(projectIds);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindActorProjectIdsInOrg" });
+    }
+  };
+
   const searchIdentities = async (
     {
       limit,
@@ -409,17 +444,32 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       searchFilter,
-      orgId
+      orgId,
+      accessibleProjectIds
     }: TSearchOrgIdentitiesByOrgIdDAL,
     tx?: Knex
   ) => {
     try {
       const searchQuery = (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
-        .whereNull(`${TableName.Identity}.projectId`)
+        .where((qb) => {
+          void qb.where((sub) => {
+            void sub
+              .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+              .whereNull(`${TableName.Identity}.projectId`);
+          });
+          if (accessibleProjectIds.length > 0) {
+            void qb.orWhere((sub) => {
+              void sub
+                .where(`${TableName.Membership}.scope`, AccessScope.Project)
+                .whereNotNull(`${TableName.Identity}.projectId`)
+                .whereRaw("?? = ??", [`${TableName.Membership}.scopeProjectId`, `${TableName.Identity}.projectId`])
+                .whereIn(`${TableName.Identity}.projectId`, accessibleProjectIds);
+            });
+          }
+        })
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .orderBy(
@@ -455,7 +505,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       type TSubquery = Awaited<typeof searchQuery>;
       const query = (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .join<TSubquery>(searchQuery, `${TableName.Membership}.id`, "searchedIdentities.id")
@@ -539,6 +588,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
+          db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -592,6 +642,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           crName,
           identityId,
           identityOrgId,
+          identityProjectId,
           identityName,
           hasDeleteProtection,
           role,
@@ -639,6 +690,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             name: identityName,
             hasDeleteProtection,
             orgId: identityOrgId,
+            projectId: identityProjectId ?? null,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
@@ -698,5 +750,5 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { find, findOne, countAllOrgIdentities, searchIdentities };
+  return { find, findOne, countAllOrgIdentities, searchIdentities, findActorProjectIdsInOrg };
 };
