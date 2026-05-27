@@ -1,6 +1,7 @@
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
@@ -148,6 +149,15 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         secondaryText = "Environment Group";
       }
 
+      break;
+    case SecretSync.Coolify:
+      if (destinationConfig.scope === CoolifySyncScope.Application) {
+        primaryText = destinationConfig.applicationName ?? destinationConfig.applicationUuid;
+        secondaryText = "Application";
+      } else {
+        primaryText = destinationConfig.serviceName ?? destinationConfig.serviceUuid;
+        secondaryText = "Service";
+      }
       break;
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;

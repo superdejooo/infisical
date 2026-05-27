@@ -17,6 +17,7 @@ import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
 import { TDbtConnection } from "./dbt-connection";
@@ -83,6 +84,7 @@ export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
+export * from "./coolify-connection";
 export * from "./databricks-connection";
 export * from "./datadog-connection";
 export * from "./dbt-connection";
@@ -162,6 +164,7 @@ export type TAppConnection =
   | TLaravelForgeConnection
   | TOctopusDeployConnection
   | TRenderConnection
+  | TCoolifyConnection
   | TFlyioConnection
   | TGitLabConnection
   | TCloudflareConnection

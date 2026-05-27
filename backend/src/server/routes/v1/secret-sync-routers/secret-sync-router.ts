@@ -38,6 +38,7 @@ import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
+import { CoolifySyncListItemSchema, CoolifySyncSchema } from "@app/services/secret-sync/coolify";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
 import {
@@ -92,6 +93,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OnePassSyncSchema,
   HerokuSyncSchema,
   RenderSyncSchema,
+  CoolifySyncSchema,
   FlyioSyncSchema,
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
@@ -137,6 +139,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OnePassSyncListItemSchema,
   HerokuSyncListItemSchema,
   RenderSyncListItemSchema,
+  CoolifySyncListItemSchema,
   FlyioSyncListItemSchema,
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,

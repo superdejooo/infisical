@@ -37,6 +37,7 @@ import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
+import { CoolifySyncOptionsReviewFields, CoolifySyncReviewFields } from "./CoolifySyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
@@ -155,6 +156,10 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Render:
       DestinationFieldsComponent = <RenderSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <RenderSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Coolify:
+      DestinationFieldsComponent = <CoolifySyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CoolifySyncOptionsReviewFields />;
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;

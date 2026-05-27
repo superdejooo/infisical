@@ -119,6 +119,12 @@ import {
   TValidateCloudflareConnectionCredentialsSchema
 } from "./cloudflare/cloudflare-connection-types";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -420,6 +426,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TOnePassConnection
   | THerokuConnection
   | TRenderConnection
+  | TCoolifyConnection
   | TLaravelForgeConnection
   | TFlyioConnection
   | TGitLabConnection
@@ -497,6 +504,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnePassConnectionInput
   | THerokuConnectionInput
   | TRenderConnectionInput
+  | TCoolifyConnectionInput
   | TLaravelForgeConnectionInput
   | TFlyioConnectionInput
   | TGitLabConnectionInput
@@ -606,6 +614,7 @@ export type TAppConnectionConfig =
   | TOnePassConnectionConfig
   | THerokuConnectionConfig
   | TRenderConnectionConfig
+  | TCoolifyConnectionConfig
   | TLaravelForgeConnectionConfig
   | TFlyioConnectionConfig
   | TGitLabConnectionConfig
@@ -674,6 +683,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnePassConnectionCredentialsSchema
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema
   | TValidateLaravelForgeConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema

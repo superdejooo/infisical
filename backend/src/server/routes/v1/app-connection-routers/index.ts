@@ -19,6 +19,7 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
+import { registerCoolifyConnectionRouter } from "./coolify-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
@@ -99,6 +100,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
     [AppConnection.Heroku]: registerHerokuConnectionRouter,
     [AppConnection.Render]: registerRenderConnectionRouter,
+    [AppConnection.Coolify]: registerCoolifyConnectionRouter,
     [AppConnection.LaravelForge]: registerLaravelForgeConnectionRouter,
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,

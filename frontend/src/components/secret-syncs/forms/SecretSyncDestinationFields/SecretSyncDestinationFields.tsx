@@ -17,6 +17,7 @@ import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
+import { CoolifySyncFields } from "./CoolifySyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DevinSyncFields } from "./DevinSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
@@ -90,6 +91,8 @@ export const SecretSyncDestinationFields = () => {
       return <HerokuSyncFields />;
     case SecretSync.Render:
       return <RenderSyncFields />;
+    case SecretSync.Coolify:
+      return <CoolifySyncFields />;
     case SecretSync.Flyio:
       return <FlyioSyncFields />;
     case SecretSync.GitLab:

@@ -2753,6 +2753,10 @@ export const AppConnections = {
       instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
       apiToken: "The API token used to access the 1Password Connect Server."
     },
+    COOLIFY: {
+      instanceUrl: "The Coolify instance URL to connect with.",
+      apiToken: "The API token used to authenticate with Coolify."
+    },
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
@@ -2958,6 +2962,9 @@ export const SecretSyncs = {
       autoRedeployServices:
         "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
     },
+    COOLIFY: {
+      restartOnSync: "Whether Infisical should restart the configured Coolify resource upon secret changes."
+    },
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     },
@@ -3102,6 +3109,13 @@ export const SecretSyncs = {
       environmentGroupId: "The ID of the Render environment group to sync secrets to.",
       scope: "The Render scope that secrets should be synced to.",
       type: "The Render resource type to sync secrets to."
+    },
+    COOLIFY: {
+      scope: "The Coolify resource scope that secrets should be synced to.",
+      applicationUuid: "The UUID of the Coolify application to sync secrets to.",
+      applicationName: "The name of the Coolify application to sync secrets to.",
+      serviceUuid: "The UUID of the Coolify service to sync secrets to.",
+      serviceName: "The name of the Coolify service to sync secrets to."
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."

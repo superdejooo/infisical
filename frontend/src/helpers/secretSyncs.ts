@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
@@ -131,6 +132,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Render.png",
     category: "HOSTING",
     description: "Environment variables for Render services."
+  },
+  [SecretSync.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "HOSTING",
+    description: "Environment variables for Coolify applications and services."
   },
   [SecretSync.Flyio]: {
     name: "Fly.io",
@@ -300,6 +307,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OnePass]: AppConnection.OnePass,
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
+  [SecretSync.Coolify]: AppConnection.Coolify,
   [SecretSync.Flyio]: AppConnection.Flyio,
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
@@ -406,3 +414,15 @@ export const RENDER_SYNC_SCOPES: Record<RenderSyncScope, { name: string; descrip
     description: "Infisical will sync secrets to the specified Render environment group."
   }
 };
+
+export const COOLIFY_SYNC_SCOPES: Record<CoolifySyncScope, { name: string; description: string }> =
+  {
+    [CoolifySyncScope.Application]: {
+      name: "Application",
+      description: "Infisical will sync secrets to the specified Coolify application."
+    },
+    [CoolifySyncScope.Service]: {
+      name: "Service",
+      description: "Infisical will sync secrets to the specified Coolify service."
+    }
+  };

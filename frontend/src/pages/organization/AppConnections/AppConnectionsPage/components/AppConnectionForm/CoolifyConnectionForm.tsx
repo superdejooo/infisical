@@ -1,0 +1,189 @@
+import { Controller, FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import { OrgPermissionCan } from "@app/components/permissions";
+import {
+  Button,
+  FormControl,
+  Input,
+  ModalClose,
+  SecretInput,
+  Select,
+  SelectItem,
+  Tooltip
+} from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { useSubscription } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { CoolifyConnectionMethod, TCoolifyConnection } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+
+import {
+  genericAppConnectionFieldsSchema,
+  GenericAppConnectionsFields
+} from "./GenericAppConnectionFields";
+
+type Props = {
+  appConnection?: TCoolifyConnection;
+  onSubmit: (formData: FormData) => Promise<void>;
+};
+
+const rootSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.Coolify)
+});
+
+const formSchema = z.discriminatedUnion("method", [
+  rootSchema.extend({
+    method: z.literal(CoolifyConnectionMethod.ApiToken),
+    credentials: z.object({
+      instanceUrl: z.string().trim().min(1, "Instance URL required").url("Invalid Instance URL"),
+      apiToken: z.string().trim().min(1, "API Token required")
+    })
+  })
+]);
+
+type FormData = z.infer<typeof formSchema>;
+
+export const CoolifyConnectionForm = ({ appConnection, onSubmit }: Props) => {
+  const isUpdate = Boolean(appConnection);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: appConnection ?? {
+      app: AppConnection.Coolify,
+      method: CoolifyConnectionMethod.ApiToken,
+      gatewayId: null,
+      gatewayPoolId: null
+    }
+  });
+
+  const {
+    handleSubmit,
+    control,
+    setValue,
+    watch,
+    formState: { isSubmitting, isDirty }
+  } = form;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
+  const { subscription } = useSubscription();
+
+  return (
+    <FormProvider {...form}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {!isUpdate && <GenericAppConnectionsFields />}
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipText={`The method you would like to use to connect with ${
+                APP_CONNECTION_MAP[AppConnection.Coolify].name
+              }. This field cannot be changed after creation.`}
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Method"
+            >
+              <Select
+                isDisabled={isUpdate}
+                value={value}
+                onValueChange={(val) => onChange(val)}
+                className="w-full border border-mineshaft-500"
+                position="popper"
+                dropdownContainerClassName="max-w-none"
+              >
+                {Object.values(CoolifyConnectionMethod).map((method) => (
+                  <SelectItem value={method} key={method}>
+                    {getAppConnectionMethodDetails(method).name}
+                  </SelectItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        />
+        {subscription.gateway && (
+          <OrgPermissionCan
+            I={OrgGatewayPermissionActions.AttachGateways}
+            a={OrgPermissionSubjects.Gateway}
+          >
+            {(isAllowed) => (
+              <FormControl label="Gateway">
+                <Tooltip
+                  isDisabled={isAllowed}
+                  content="Restricted access. You don't have permission to attach gateways to resources."
+                >
+                  <div>
+                    <GatewayPicker
+                      isDisabled={!isAllowed}
+                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                        setValue("gatewayId", newGwId, { shouldDirty: true });
+                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                      }}
+                    />
+                  </div>
+                </Tooltip>
+              </FormControl>
+            )}
+          </OrgPermissionCan>
+        )}
+        <Controller
+          name="credentials.instanceUrl"
+          control={control}
+          shouldUnregister
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Instance URL"
+              tooltipClassName="max-w-sm"
+              tooltipText="The URL at which your Coolify instance is hosted."
+            >
+              <Input {...field} placeholder="https://coolify.example.com" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          name="credentials.apiToken"
+          control={control}
+          shouldUnregister
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="API Token"
+            >
+              <SecretInput
+                {...field}
+                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+              />
+            </FormControl>
+          )}
+        />
+        <div className="mt-8 flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            colorSchema="secondary"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting || !isDirty}
+          >
+            {isUpdate ? "Update Credentials" : "Connect to Coolify"}
+          </Button>
+          <ModalClose asChild>
+            <Button colorSchema="secondary" variant="plain">
+              Cancel
+            </Button>
+          </ModalClose>
+        </div>
+      </form>
+    </FormProvider>
+  );
+};

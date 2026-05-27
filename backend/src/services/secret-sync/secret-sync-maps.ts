@@ -22,6 +22,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.OnePass]: "1Password",
   [SecretSync.Heroku]: "Heroku",
   [SecretSync.Render]: "Render",
+  [SecretSync.Coolify]: "Coolify",
   [SecretSync.Flyio]: "Fly.io",
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
@@ -67,6 +68,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OnePass]: AppConnection.OnePass,
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
+  [SecretSync.Coolify]: AppConnection.Coolify,
   [SecretSync.Flyio]: AppConnection.Flyio,
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
@@ -112,6 +114,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.OnePass]: SecretSyncPlanType.Regular,
   [SecretSync.Heroku]: SecretSyncPlanType.Regular,
   [SecretSync.Render]: SecretSyncPlanType.Regular,
+  [SecretSync.Coolify]: SecretSyncPlanType.Regular,
   [SecretSync.Flyio]: SecretSyncPlanType.Regular,
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
@@ -157,6 +160,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.OnePass]: ["valueLabel"],
   [SecretSync.Heroku]: ["appName"],
   [SecretSync.Render]: [],
+  [SecretSync.Coolify]: ["applicationName", "serviceName"],
   [SecretSync.Flyio]: [],
   [SecretSync.GitLab]: [
     "projectName",
@@ -213,6 +217,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.OnePass]: defaultDuplicateCheck,
   [SecretSync.Heroku]: defaultDuplicateCheck,
   [SecretSync.Render]: defaultDuplicateCheck,
+  [SecretSync.Coolify]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
   [SecretSync.GitLab]: (existingConfig, newConfig) => {
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;

@@ -53,6 +53,7 @@ import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
+import { COOLIFY_SYNC_LIST_OPTION, CoolifySyncFns } from "./coolify";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
@@ -106,6 +107,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
   [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
@@ -364,6 +366,12 @@ export const SecretSyncFns = {
         return OnePassSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Render:
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, schemaSecretMap, {
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        });
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
@@ -497,6 +505,13 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Render:
         secretMap = await RenderSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Coolify:
+        secretMap = await CoolifySyncFns.getSecrets(secretSync, {
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        });
         break;
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
@@ -650,6 +665,12 @@ export const SecretSyncFns = {
         return HerokuSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Render:
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.removeSecrets(secretSync, schemaSecretMap, {
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
+        });
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:

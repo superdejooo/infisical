@@ -18,6 +18,7 @@ export enum SecretSync {
   OnePass = "1password",
   Heroku = "heroku",
   Render = "render",
+  Coolify = "coolify",
   Flyio = "flyio",
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",

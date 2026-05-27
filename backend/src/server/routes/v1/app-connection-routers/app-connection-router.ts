@@ -70,6 +70,10 @@ import {
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 import {
+  CoolifyConnectionListItemSchema,
+  SanitizedCoolifyConnectionSchema
+} from "@app/services/app-connection/coolify";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -230,6 +234,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOnePassConnectionSchema.options,
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
+  ...SanitizedCoolifyConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options,
@@ -299,6 +304,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OnePassConnectionListItemSchema,
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
+  CoolifyConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   GitLabConnectionListItemSchema,
   CloudflareConnectionListItemSchema,

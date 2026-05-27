@@ -14,6 +14,7 @@ import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
+import { CoolifySyncDestinationCol } from "./CoolifySyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { DevinSyncDestinationCol } from "./DevinSyncDestinationCol";
 import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlatformSyncDestinationCol";
@@ -87,6 +88,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <HerokuSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Render:
       return <RenderSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Coolify:
+      return <CoolifySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Flyio:
       return <FlyioSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.GitLab:

@@ -112,6 +112,7 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import { TCoolifySync, TCoolifySyncInput, TCoolifySyncListItem, TCoolifySyncWithCredentials } from "./coolify";
 import { TDevinSync, TDevinSyncInput, TDevinSyncListItem, TDevinSyncWithCredentials } from "./devin/devin-sync-types";
 import {
   TDigitalOceanAppPlatformSyncInput,
@@ -223,6 +224,7 @@ export type TSecretSync =
   | TOnePassSync
   | THerokuSync
   | TRenderSync
+  | TCoolifySync
   | TFlyioSync
   | TGitLabSync
   | TCloudflarePagesSync
@@ -265,6 +267,7 @@ export type TSecretSyncWithCredentials =
   | TOnePassSyncWithCredentials
   | THerokuSyncWithCredentials
   | TRenderSyncWithCredentials
+  | TCoolifySyncWithCredentials
   | TFlyioSyncWithCredentials
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
@@ -309,6 +312,7 @@ export type TSecretSyncInput =
   | TOnePassSyncInput
   | THerokuSyncInput
   | TRenderSyncInput
+  | TCoolifySyncInput
   | TFlyioSyncInput
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
@@ -354,6 +358,7 @@ export type TSecretSyncListItem =
   | TOnePassSyncListItem
   | THerokuSyncListItem
   | TRenderSyncListItem
+  | TCoolifySyncListItem
   | TFlyioSyncListItem
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem

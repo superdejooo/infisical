@@ -31,6 +31,7 @@ import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
@@ -229,6 +230,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.Render:
         return <RenderConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} />;
       case AppConnection.LaravelForge:
         return <LaravelForgeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Flyio:
@@ -458,6 +461,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         );
       case AppConnection.Render:
         return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.LaravelForge:
         return <LaravelForgeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Flyio:

@@ -27,6 +27,7 @@ export enum AppConnection {
   OnePass = "1password",
   Heroku = "heroku",
   Render = "render",
+  Coolify = "coolify",
   Flyio = "flyio",
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
