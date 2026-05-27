@@ -204,6 +204,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         properties: {
           orgId: project.orgId,
           name: project.name,
+          projectType: req.body.type,
           ...req.auditLogInfo
         }
       });
@@ -1332,6 +1333,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         notAfterTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterTo),
         notBeforeFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeFrom),
         notBeforeTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeTo),
+        applicationId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("Filter to certificates issued through a specific Application."),
+        applicationIds: z
+          .array(z.string().uuid())
+          .optional()
+          .describe("Filter to certificates issued through any of the supplied Applications."),
         sortBy: z
           .enum(["notAfter", "notBefore", "createdAt", "commonName", "keyAlgorithm", "status"])
           .optional()
@@ -1345,7 +1355,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
-              enrollmentType: z.string().nullable().optional()
+              enrollmentType: z.string().nullable().optional(),
+              applicationName: z.string().nullable().optional()
             })
           ),
           totalCount: z.number()
