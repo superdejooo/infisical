@@ -35,6 +35,16 @@ import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync"
 
 import { TSecretSyncForm } from "../schemas";
 
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const responseMessage = (error as { response?: { data?: { message?: unknown } } })?.response?.data
+    ?.message;
+
+  if (typeof responseMessage === "string" && responseMessage.length > 0) return responseMessage;
+  if (error instanceof Error && error.message) return error.message;
+
+  return fallback;
+};
+
 export const CoolifySyncFields = () => {
   const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.Coolify }
@@ -45,19 +55,23 @@ export const CoolifySyncFields = () => {
   const selectedScope = useWatch({ name: "destinationConfig.scope", control });
   const isApplicationScope = selectedScope !== CoolifySyncScope.Service;
 
-  const { data: applications = [], isPending: isApplicationsPending } = useListCoolifyApplications(
-    connectionId,
-    {
-      enabled: Boolean(connectionId) && isApplicationScope && !isManualUuid
-    }
-  );
+  const {
+    data: applications = [],
+    isPending: isApplicationsPending,
+    isError: isApplicationsError,
+    error: applicationsError
+  } = useListCoolifyApplications(connectionId, {
+    enabled: Boolean(connectionId) && isApplicationScope && !isManualUuid
+  });
 
-  const { data: services = [], isPending: isServicesPending } = useListCoolifyServices(
-    connectionId,
-    {
-      enabled: Boolean(connectionId) && !isApplicationScope && !isManualUuid
-    }
-  );
+  const {
+    data: services = [],
+    isPending: isServicesPending,
+    isError: isServicesError,
+    error: servicesError
+  } = useListCoolifyServices(connectionId, {
+    enabled: Boolean(connectionId) && !isApplicationScope && !isManualUuid
+  });
 
   const clearTarget = () => {
     setValue("destinationConfig.applicationUuid", "");
@@ -69,6 +83,12 @@ export const CoolifySyncFields = () => {
   const resources = isApplicationScope ? applications : services;
   const isLoadingResources =
     Boolean(connectionId) && (isApplicationScope ? isApplicationsPending : isServicesPending);
+  const resourceListError = isApplicationScope ? applicationsError : servicesError;
+  const isResourceListError = isApplicationScope ? isApplicationsError : isServicesError;
+  const resourceTypeLabel = isApplicationScope ? "applications" : "services";
+  const resourceListErrorMessage = isResourceListError
+    ? getApiErrorMessage(resourceListError, `Failed to load Coolify ${resourceTypeLabel}.`)
+    : undefined;
   const targetFieldName: "destinationConfig.applicationUuid" | "destinationConfig.serviceUuid" =
     isApplicationScope ? "destinationConfig.applicationUuid" : "destinationConfig.serviceUuid";
   const targetNameFieldName: "destinationConfig.applicationName" | "destinationConfig.serviceName" =
@@ -178,6 +198,7 @@ export const CoolifySyncFields = () => {
                 <FilterableSelect
                   isLoading={isLoadingResources}
                   isDisabled={!connectionId}
+                  isError={Boolean(error) || Boolean(resourceListErrorMessage)}
                   value={resources.find((resource) => resource.uuid === value) ?? null}
                   onChange={(option) => {
                     const selected = option as SingleValue<TCoolifyResource>;
@@ -188,11 +209,19 @@ export const CoolifySyncFields = () => {
                   placeholder={
                     isApplicationScope ? "Select an application..." : "Select a service..."
                   }
+                  noOptionsMessage={() =>
+                    resourceListErrorMessage || `No Coolify ${resourceTypeLabel} found.`
+                  }
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.uuid}
                 />
               )}
-              <FieldError errors={[error]} />
+              <FieldError
+                errors={[
+                  error,
+                  resourceListErrorMessage ? { message: resourceListErrorMessage } : undefined
+                ]}
+              />
             </FieldContent>
           </Field>
         )}

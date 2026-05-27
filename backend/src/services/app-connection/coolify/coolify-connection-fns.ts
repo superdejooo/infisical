@@ -39,6 +39,44 @@ const getCoolifyHeaders = (apiToken: string) => ({
   "Content-Type": "application/json"
 });
 
+const getCoolifyResponseMessage = (data: unknown): string | undefined => {
+  if (!data) return undefined;
+  if (typeof data === "string") return data;
+
+  if (typeof data === "object") {
+    const { message, error, errors } = data as { message?: unknown; error?: unknown; errors?: unknown };
+
+    if (typeof message === "string") return message;
+    if (typeof error === "string") return error;
+
+    if (Array.isArray(errors)) {
+      const firstMessage = errors
+        .map((err) => {
+          if (typeof err === "string") return err;
+          if (err && typeof err === "object") return (err as { message?: unknown }).message;
+          return undefined;
+        })
+        .find((err): err is string => typeof err === "string" && err.length > 0);
+
+      if (firstMessage) return firstMessage;
+    }
+  }
+
+  return undefined;
+};
+
+export const getCoolifyErrorMessage = (error: unknown): string => {
+  if (error instanceof AxiosError) {
+    return getCoolifyResponseMessage(error.response?.data) || error.message || "Unknown error";
+  }
+
+  if (error instanceof Error) {
+    return error.message || "Unknown error";
+  }
+
+  return "Unknown error";
+};
+
 export const requestWithCoolifyGateway = async <T>(
   appConnection: { gatewayId?: string | null; gatewayPoolId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -125,21 +163,22 @@ export const requestWithCoolifyGateway = async <T>(
 
   return withGatewayProxy(
     async (proxyPort) => {
-      const httpsAgent = new https.Agent({
-        servername: targetHost
-      });
+      const isHttps = url.protocol === "https:";
 
-      url.protocol = "https:";
       url.host = `localhost:${proxyPort}`;
 
       const finalRequestConfig: AxiosRequestConfig = {
         ...requestConfig,
         url: url.toString(),
-        httpsAgent,
         headers: {
           ...requestConfig.headers,
           Host: hostHeader
-        }
+        },
+        ...(isHttps && {
+          httpsAgent: new https.Agent({
+            servername: targetHost
+          })
+        })
       };
 
       try {
@@ -187,7 +226,7 @@ export const validateCoolifyConnectionCredentials = async (
 
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+        message: `Failed to validate credentials: ${getCoolifyErrorMessage(error)}`
       });
     }
 

@@ -1,3 +1,5 @@
+import { AxiosError } from "axios";
+
 import { requestWithCoolifyGateway } from "@app/services/app-connection/coolify/coolify-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 
@@ -5,6 +7,10 @@ import { CoolifySyncScope } from "./coolify-sync-enums";
 import { CoolifySyncFns } from "./coolify-sync-fns";
 
 vi.mock("@app/services/app-connection/coolify/coolify-connection-fns", () => ({
+  getCoolifyErrorMessage: vi.fn((error: unknown) => {
+    const responseMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    return responseMessage || (error as Error)?.message || "Unknown error";
+  }),
   getCoolifyRequestConfig: vi.fn((_connection: unknown, path: string, config?: Record<string, unknown>) => ({
     ...config,
     url: `https://coolify.test/api/v1${path}`
@@ -60,6 +66,15 @@ const buildSync = (overrides: Record<string, unknown> = {}) =>
     },
     ...overrides
   }) as never;
+
+const buildAxiosError = (message: string, data: unknown, status = 400) =>
+  new AxiosError(message, undefined, undefined, undefined, {
+    data,
+    status,
+    statusText: "Error",
+    headers: {},
+    config: {} as never
+  } as never);
 
 const mockCoolifyRequests = (envVars: unknown[]) => {
   requestWithCoolifyGatewayMock.mockImplementation(async (_connection, _gatewayService, _gatewayV2Service, config) => {
@@ -189,6 +204,18 @@ describe("Coolify sync functions", () => {
     });
   });
 
+  test("marks missing Coolify resource errors as non-retryable", async () => {
+    requestWithCoolifyGatewayMock.mockRejectedValueOnce(
+      buildAxiosError("Request failed with status code 404", { message: "Application not found" }, 404)
+    );
+
+    await expect(CoolifySyncFns.getSecrets(buildSync(), deps)).rejects.toMatchObject({
+      name: "SecretSyncError",
+      shouldRetry: false,
+      message: "Failed to list Coolify environment variables: Application not found"
+    });
+  });
+
   test("restarts only when restartOnSync is enabled and secrets changed", async () => {
     mockCoolifyRequests([]);
 
@@ -286,6 +313,53 @@ describe("Coolify sync functions", () => {
       expect.objectContaining({
         method: "GET",
         url: "https://coolify.test/api/v1/applications/app-1/restart"
+      }),
+      expect.anything()
+    );
+  });
+
+  test("marks restart failures as non-retryable after secrets are synced", async () => {
+    requestWithCoolifyGatewayMock.mockImplementation(
+      async (_connection, _gatewayService, _gatewayV2Service, config) => {
+        const requestConfig = config as { method?: string; url: string };
+
+        if (requestConfig.method === "GET" && requestConfig.url.endsWith("/envs")) {
+          return { data: [] } as never;
+        }
+
+        if (requestConfig.method === "GET" && requestConfig.url.endsWith("/restart")) {
+          throw buildAxiosError("Request failed with status code 500", { message: "Restart failed" }, 500);
+        }
+
+        return { data: {} } as never;
+      }
+    );
+
+    await expect(
+      CoolifySyncFns.syncSecrets(
+        buildSync({
+          syncOptions: {
+            disableSecretDeletion: true,
+            keySchema: "{{secretKey}}",
+            restartOnSync: true
+          }
+        }),
+        { NEW: { value: "created" } },
+        deps
+      )
+    ).rejects.toMatchObject({
+      name: "SecretSyncError",
+      shouldRetry: false,
+      message: "Coolify secrets were synced, but failed to restart the application: Restart failed"
+    });
+
+    expect(requestWithCoolifyGatewayMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        method: "PATCH",
+        url: "https://coolify.test/api/v1/applications/app-1/envs/bulk"
       }),
       expect.anything()
     );

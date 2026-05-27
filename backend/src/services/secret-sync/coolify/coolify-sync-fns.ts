@@ -1,8 +1,11 @@
 /* eslint-disable no-await-in-loop */
+import { AxiosError } from "axios";
+
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
+  getCoolifyErrorMessage,
   getCoolifyRequestConfig,
   requestWithCoolifyGateway
 } from "@app/services/app-connection/coolify/coolify-connection-fns";
@@ -24,6 +27,12 @@ type TCoolifyTarget = {
   uuid: string;
   pathSegment: "applications" | "services";
 };
+
+const isNonRetryableStatus = (status: number | undefined): boolean =>
+  Boolean(status && status >= 400 && status < 500 && status !== 429);
+
+const shouldRetryCoolifyError = (error: unknown) =>
+  error instanceof AxiosError ? !isNonRetryableStatus(error.response?.status) : true;
 
 export const getCoolifyTarget = (secretSync: TCoolifySyncWithCredentials): TCoolifyTarget => {
   const { destinationConfig } = secretSync;
@@ -80,8 +89,9 @@ export const listCoolifyEnvVars = async (secretSync: TCoolifySyncWithCredentials
     return data;
   } catch (error) {
     throw new SecretSyncError({
-      message: "Failed to list Coolify environment variables",
-      error
+      message: `Failed to list Coolify environment variables: ${getCoolifyErrorMessage(error)}`,
+      error,
+      shouldRetry: shouldRetryCoolifyError(error)
     });
   }
 };
@@ -104,8 +114,9 @@ const bulkPatchCoolifyEnvVars = async (
     });
   } catch (error) {
     throw new SecretSyncError({
-      message: "Failed to create or update Coolify environment variables",
-      error
+      message: `Failed to create or update Coolify environment variables: ${getCoolifyErrorMessage(error)}`,
+      error,
+      shouldRetry: shouldRetryCoolifyError(error)
     });
   }
 };
@@ -123,9 +134,10 @@ const deleteCoolifyEnvVar = async (
     });
   } catch (error) {
     throw new SecretSyncError({
-      message: `Failed to delete Coolify environment variable ${envVar.key}`,
+      message: `Failed to delete Coolify environment variable ${envVar.key}: ${getCoolifyErrorMessage(error)}`,
       secretKey: envVar.key,
-      error
+      error,
+      shouldRetry: shouldRetryCoolifyError(error)
     });
   }
 };
@@ -139,8 +151,9 @@ const restartCoolifyTarget = async (secretSync: TCoolifySyncWithCredentials, dep
     });
   } catch (error) {
     throw new SecretSyncError({
-      message: "Failed to restart Coolify resource after syncing secrets",
-      error
+      message: `Coolify secrets were synced, but failed to restart the ${target.scope}: ${getCoolifyErrorMessage(error)}`,
+      error,
+      shouldRetry: false
     });
   }
 };

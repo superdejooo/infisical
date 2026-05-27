@@ -1,3 +1,5 @@
+import { AxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
@@ -6,6 +8,7 @@ import {
   getCoolifyApiUrl,
   listCoolifyApplications,
   listCoolifyServices,
+  requestWithCoolifyGateway,
   validateCoolifyConnectionCredentials
 } from "./coolify-connection-fns";
 
@@ -17,6 +20,12 @@ vi.mock("@app/lib/config/request", () => ({
 
 vi.mock("@app/lib/validator", () => ({
   blockLocalAndPrivateIpAddresses: vi.fn()
+}));
+
+vi.mock("@app/lib/logger", () => ({
+  logger: {
+    error: vi.fn()
+  }
 }));
 
 vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
@@ -63,6 +72,15 @@ const buildConnection = (overrides: Record<string, unknown> = {}) =>
     ...overrides
   }) as never;
 
+const buildAxiosError = (message: string, data: unknown, status = 400) =>
+  new AxiosError(message, undefined, undefined, undefined, {
+    data,
+    status,
+    statusText: "Error",
+    headers: {},
+    config: {} as never
+  } as never);
+
 describe("Coolify connection functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -85,6 +103,19 @@ describe("Coolify connection functions", () => {
         }) as unknown
       })
     );
+  });
+
+  test("surfaces Coolify response messages when credential validation fails", async () => {
+    requestMock.mockRejectedValueOnce(
+      buildAxiosError("Request failed with status code 401", { message: "Invalid API token" }, 401)
+    );
+
+    await expect(
+      validateCoolifyConnectionCredentials(buildConnection(), gatewayService, gatewayV2Service)
+    ).rejects.toMatchObject({
+      name: "BadRequest",
+      message: "Failed to validate credentials: Invalid API token"
+    });
   });
 
   test("lists applications and maps compact resource fields", async () => {
@@ -141,6 +172,41 @@ describe("Coolify connection functions", () => {
         url: "https://localhost:12345/api/v1/applications",
         headers: expect.objectContaining({
           Host: "coolify.example.com"
+        }) as unknown
+      })
+    );
+  });
+
+  test("preserves HTTP protocol through v1 gateway requests", async () => {
+    gatewayV2Service.getPlatformConnectionDetailsByGatewayId.mockResolvedValueOnce(null);
+    requestMock.mockResolvedValueOnce({ data: [] });
+
+    await requestWithCoolifyGateway(
+      {
+        gatewayId: "gateway-1",
+        gatewayPoolId: null
+      },
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: "http://coolify.example.com:3000/api/v1/applications",
+        method: "GET"
+      }
+    );
+
+    expect(gatewayV2Service.getPlatformConnectionDetailsByGatewayId).toHaveBeenCalledWith({
+      gatewayId: "gateway-1",
+      targetHost: "coolify.example.com",
+      targetPort: 3000
+    });
+
+    const finalRequestConfig = requestMock.mock.calls[0][0] as { url: string; httpsAgent?: unknown };
+    expect(finalRequestConfig.url).toBe("http://localhost:23456/api/v1/applications");
+    expect(finalRequestConfig.httpsAgent).toBeUndefined();
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Host: "coolify.example.com:3000"
         }) as unknown
       })
     );
